@@ -27,7 +27,7 @@ def pdf_to_image_entries(pdf_path: str, dpi: int = 200) -> List[dict]:
 
     Each page becomes an entry with a small text field and a base64-encoded PNG image URL.
     """
-    pages = convert_from_path(pdf_path, dpi=dpi)
+    pages = convert_from_path(pdf_path, dpi=dpi, poppler_path="/opt/homebrew/bin")
     input_array = []
     for page in pages:
         buffer = BytesIO()
@@ -92,52 +92,39 @@ def embed_pages_and_store(
     return collection, ids
 
 
-def query_collection(co_client: "cohere.ClientV2", collection: "chromadb.api.models.Collection", query: str, model: str, top_k: int = 5) -> Dict[str, List]:
-    query_input = [{"content": [{"type": "text", "text": query}]}]
-    query_emb = co_client.embed(
-        inputs=query_input,
-        model=model,
-        input_type="search_query",
-        embedding_types=["float"],
-    ).embeddings.float[0]
-
-    results = collection.query(query_embeddings=[query_emb], n_results=top_k)
-    return results
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Convert PDF to embeddings using Cohere embed-v4 and store in ChromaDB.")
     parser.add_argument("--pdf", required=True, help="Path to the PDF file")
     parser.add_argument("--dpi", type=int, default=200, help="DPI for PDF->image conversion")
     parser.add_argument("--model", default="embed-v4.0", help="Cohere embed model to use")
     parser.add_argument("--collection", default="pdf_pages", help="Chroma collection name")
-    parser.add_argument("--persist_dir", default=None, help="Directory to persist Chroma DB (uses duckdb+parquet).")
+    parser.add_argument("--persist_dir", default="./chroma_db", help="Directory to persist Chroma DB (uses duckdb+parquet).")
     parser.add_argument("--query", default=None, help="Optional query to run after embedding")
     parser.add_argument("--top_k", type=int, default=5, help="Number of results to return for the query")
     args = parser.parse_args()
 
     api_key = os.environ.get("COHERE_API_KEY")
     if not api_key:
-        print("Please set COHERE_API_KEY in the environment.")
+        print("Please set COHERE_API_KEY in the environment.", flush=True)
         sys.exit(1)
 
     co_client = cohere.ClientV2(api_key=api_key)
 
-    print(f"Converting PDF to images: {args.pdf}")
+    print(f"Converting PDF to images: {args.pdf}", flush=True)
     input_array = pdf_to_image_entries(args.pdf, dpi=args.dpi)
-    print(f"Generated {len(input_array)} page entries; embedding with model {args.model}...")
+    print(f"Generated {len(input_array)} page entries; embedding with model {args.model}...", flush=True)
 
     collection, ids = embed_pages_and_store(co_client, input_array, args.model, args.collection, persist_dir=args.persist_dir)
-    print(f"Stored {len(ids)} embeddings in Chroma collection '{args.collection}'.")
+    print(f"Stored {len(ids)} embeddings in Chroma collection '{args.collection}'.", flush=True)
     if args.persist_dir:
-        print(f"Chroma DB persisted to: {args.persist_dir}")
+        print(f"Chroma DB persisted to: {args.persist_dir}", flush=True)
 
-    if args.query:
-        print(f"Running query: {args.query}")
-        results = query_collection(co_client, collection, args.query, args.model, top_k=args.top_k)
-        print("Top result ids:", results.get("ids"))
-    else:
-        print("No query provided. Done.")
+    # if args.query:
+    #     print(f"Running query: {args.query}")
+    #     results = query_collection(co_client, collection, args.query, args.model, top_k=args.top_k)
+    #     print("Top result ids:", results.get("ids"))
+    # else:
+    #     print("No query provided. Done.")
 
 
 if __name__ == "__main__":
