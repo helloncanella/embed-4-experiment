@@ -1,5 +1,7 @@
 import argparse
 
+from query_collection import query_collection
+
 
 parser = argparse.ArgumentParser(description="Convert PDF to embeddings using Cohere embed-v4 and store in ChromaDB.")
 
@@ -11,21 +13,7 @@ import chromadb
 import cohere
 import argparse
 import os
-import sys
-from typing import List, Tuple, Optional, Dict
-
-
-def query_collection(co_client: "cohere.ClientV2", collection: "chromadb.api.models.Collection", query: str, model: str, top_k: int = 5) -> Dict[str, List]:
-    query_input = [{"content": [{"type": "text", "text": query}]}]
-    query_emb = co_client.embed(
-        inputs=query_input,
-        model=model,
-        input_type="search_query",
-        embedding_types=["float"],
-    ).embeddings.float[0]
-
-    results = collection.query(query_embeddings=[query_emb], n_results=top_k)
-    return results
+from typing import Tuple, Optional
 
 
 if __name__ == "__main__":
