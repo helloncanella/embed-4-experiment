@@ -1,0 +1,5 @@
+cohere==5.17.0
+streamlit==1.48.1
+langchain==0.3.74
+langchain-openai==0.3.10
+
